@@ -448,14 +448,17 @@ export default function App() {
             isGuest: false // มั่นใจว่าไม่ใช่ Guest
           });
           setIsAdminAuthenticated(true);
+          setShowLanding(false);
+          setViewMode('admin');
         } else {
           setUser(currentUser);
           // ถ้าเป็น Google Login (isRealFirebaseUser) ให้เป็น Admin ของตัวเอง
           if (currentUser.isRealFirebaseUser) {
             setIsAdminAuthenticated(true);
+            setShowLanding(false);
+            setViewMode('admin');
           }
         }
-        setShowLanding(false);
       } else {
         if (isMasterMode) {
            setUser({ 
@@ -466,6 +469,8 @@ export default function App() {
              isGuest: false 
            });
            setIsAdminAuthenticated(true);
+           setShowLanding(false);
+           setViewMode('admin');
         } else {
           setUser(null);
           setShowLanding(true);
@@ -867,6 +872,7 @@ export default function App() {
         setIsAdminAuthenticated(true);
         sessionStorage.setItem('isAdminAuthenticated', 'true');
         setShowLanding(false);
+        setViewMode('admin');
         setLoginError('');
         
         setUser({ 
@@ -1208,7 +1214,7 @@ export default function App() {
   }
 
   // --- Simple Login Page ---
-  if (showLanding && !user) {
+  if (showLanding && (!user || user.isAnonymous)) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
         <CustomThemeStyle theme={settings.themeColor || 'blue'} />
