@@ -431,7 +431,10 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       // ตรวจสอบเช็คเช็คชั่นก่อน
       const savedAuth = sessionStorage.getItem('isAdminAuthenticated');
-      const isMasterMode = savedAuth === 'true' || isAdminAuthenticated;
+      
+      // จะเป็น Master Mode ก็ต่อเมื่อมีการเซฟลง Session (จากการใส่รหัสผ่าน) เท่านั้น
+      // และต้องไม่มี User ที่เป็น Real Firebase User (Google Account) มาทับ
+      const isMasterMode = savedAuth === 'true' && (!currentUser || currentUser.isAnonymous);
 
       if (currentUser) {
         currentUser.isRealFirebaseUser = !currentUser.isAnonymous;
@@ -527,6 +530,14 @@ export default function App() {
           ...data  // ทับด้วยค่าจาก Server
         }));
         if (data.settings) setSettings(prev => ({ ...prev, ...data.settings }));
+      } else if (user && user.uid === targetUid && !user.isGuest && !user.isMasterAdmin) {
+        // กรณีเป็นผู้ใช้ใหม่ (ไม่มีข้อมูลใน Firestore) ให้ใช้ข้อมูลจาก Google Profile เบื้องต้น
+        setProfile(prev => ({
+          ...INITIAL_PROFILE,
+          name: user.displayName || prev.name,
+          email: user.email || prev.email,
+          photoUrl: user.photoURL || prev.photoUrl
+        }));
       }
     }, (error) => {
       console.error("Error fetching profile:", error);
