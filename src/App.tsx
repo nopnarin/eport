@@ -6,6 +6,7 @@ import {
   Printer, User, UserCheck, Menu, X, Save, Eye, Palette, Lock, Upload, Loader2, ChevronDown, ChevronUp, FileSpreadsheet, AlertCircle, Filter, Monitor,
   BarChart3, CheckCircle2, Database, History, ShieldAlert
 } from 'lucide-react';
+import { motion } from "motion/react";
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -2071,18 +2072,25 @@ export default function App() {
                   )}
 
                   {activeTab === 'community' && (
-                    <div className="space-y-6">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shadow-inner">
-                            <Users size={28} />
+                    <div className="space-y-8">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-8 rounded-[2rem] border border-blue-400 shadow-2xl shadow-blue-200 text-white relative overflow-hidden group">
+                        {/* Decorative Background Elements */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl transition-transform duration-700 group-hover:scale-110"></div>
+                        <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-400/20 rounded-full -ml-10 -mb-10 blur-2xl"></div>
+                        
+                        <div className="flex items-center gap-5 relative z-10">
+                          <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white shadow-xl border border-white/30">
+                            <Users size={32} />
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold text-slate-800">ทำเนียบแฟ้มผลงานสมาชิก</h3>
-                            <p className="text-sm text-slate-500">พบสมาชิกที่เปิดเผยข้อมูล {communityUsers.length} ท่าน</p>
+                            <h3 className="text-2xl font-black tracking-tight">ทำเนียบแฟ้มผลงานสมาชิก</h3>
+                            <p className="text-blue-100 text-sm font-medium opacity-90 flex items-center gap-2">
+                              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                              พบสมาชิกที่เปิดเผยข้อมูล {communityUsers.length} ท่านในระบบ
+                            </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3 relative z-10">
                           <button 
                             onClick={() => {
                               setIsCommunityLoading(true);
@@ -2105,10 +2113,10 @@ export default function App() {
                               fetchCommunity();
                             }}
                             disabled={isCommunityLoading}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all font-bold text-sm disabled:opacity-50"
+                            className="flex items-center gap-2 px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-2xl transition-all duration-300 font-bold text-sm disabled:opacity-50 border border-white/20 shadow-lg"
                           >
                             <History size={18} className={isCommunityLoading ? 'animate-spin' : ''} /> 
-                            {isCommunityLoading ? 'กำลังโหลด...' : 'รีเฟรชข้อมูล'}
+                            {isCommunityLoading ? 'กำลังอัปเดต...' : 'อัปเดตข้อมูลล่าสุด'}
                           </button>
                         </div>
                       </div>
@@ -2134,45 +2142,64 @@ export default function App() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                          {communityUsers.map((u) => {
+                          {communityUsers.map((u, index) => {
                             const uProfile = u.profile || u;
                             return (
-                              <div 
-                                key={u.id} 
-                                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col h-full"
+                              <motion.div 
+                                key={u.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(37,99,235,0.12)] transition-all duration-500 group flex flex-col h-full relative"
                               >
-                                <div className="h-24 bg-slate-50 border-b border-slate-100 relative overflow-hidden">
-                                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#2563eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
-                                  <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
-                                    <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-md overflow-hidden bg-white">
+                                {/* Top Color Accent Line */}
+                                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500"></div>
+                                
+                                {/* Decorative Gradient Corner */}
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/50 rounded-bl-[100px] -mr-10 -mt-10 transition-all duration-500 group-hover:bg-blue-100/50 group-hover:scale-125"></div>
+                                
+                                <div className="p-7 pb-7 text-center flex-1 flex flex-col items-center relative z-10">
+                                  <div className="relative mb-5">
+                                    {/* Animated Glow Behind Image */}
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-400 to-indigo-500 rounded-full blur-2xl opacity-20 scale-125 group-hover:opacity-30 group-hover:scale-150 transition-all duration-700"></div>
+                                    
+                                    <div className="w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden bg-white relative z-10 ring-1 ring-slate-100 transition-all duration-500 group-hover:ring-blue-200 group-hover:translate-y-[-4px]">
                                       <img 
                                         src={getDirectImageUrl(uProfile.photoUrl) || DEFAULT_AVATAR} 
                                         alt={uProfile.name}
                                         className="w-full h-full object-cover"
+                                        style={{ 
+                                          objectPosition: `${uProfile.imagePanX ?? 50}% ${uProfile.imagePanY ?? 50}%`, 
+                                          transform: `scale(${uProfile.imageZoom ?? 1})` 
+                                        }}
                                         onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_AVATAR; }}
                                       />
                                     </div>
                                   </div>
-                                </div>
-                                <div className="pt-12 p-5 text-center flex-1 flex flex-col">
-                                  <h4 className="font-bold text-slate-800 text-lg line-clamp-1 mb-1">{uProfile.name || u.name || 'ไม่ระบุชื่อ'}</h4>
-                                  <p className="text-blue-600 text-sm font-medium mb-2 line-clamp-1">{uProfile.position || '-'}</p>
-                                  <p className="text-slate-500 text-xs flex items-center justify-center gap-1 mb-4">
-                                    <Home size={12} /> {uProfile.school || '-'}
+                                  
+                                  <h4 className="font-extrabold text-slate-800 text-lg line-clamp-1 mb-1 group-hover:text-blue-600 transition-colors duration-300">{uProfile.name || u.name || 'ไม่ระบุชื่อ'}</h4>
+                                  
+                                  <div className="inline-block px-3 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 text-[10px] font-bold rounded-full uppercase tracking-wider mb-3 border border-blue-100/50 shadow-sm">
+                                    {uProfile.position || '-'}
+                                  </div>
+                                  
+                                  <p className="text-slate-500 text-[11px] font-medium flex items-center justify-center gap-1.5 opacity-70 mb-6 bg-slate-50 py-1 px-3 rounded-lg border border-slate-100/50">
+                                    <Home size={12} className="text-blue-400" /> {uProfile.school || '-'}
                                   </p>
-                                  <div className="mt-auto pt-4 border-t border-slate-50">
+                                  
+                                  <div className="w-full mt-auto">
                                     <button 
                                       onClick={() => {
                                         setPublicUserUid(u.id);
                                         setViewMode('public');
                                       }}
-                                      className="w-full bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 py-2.5 rounded-xl transition-all duration-200 font-bold text-sm flex items-center justify-center gap-2"
+                                      className="w-full bg-slate-900 hover:bg-blue-600 text-white py-3 rounded-2xl transition-all duration-300 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-slate-100 hover:shadow-blue-200 group-hover:scale-[1.02] active:scale-95"
                                     >
-                                      <Eye size={16} /> ดูแฟ้มผลงาน
+                                      <Eye size={15} className="group-hover:animate-pulse" /> ดูผลงานสมาชิก
                                     </button>
                                   </div>
                                 </div>
-                              </div>
+                              </motion.div>
                             );
                           })}
                         </div>
