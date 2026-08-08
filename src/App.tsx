@@ -16,7 +16,7 @@ import {
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc, getDocFromServer, updateDoc, getDocs } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 import { jsPDF } from 'jspdf';
-import * as htmlToImage from 'html-to-image';
+import html2canvas from 'html2canvas';
 
 // --- Firebase Configuration ---
 const app = initializeApp(firebaseConfig);
@@ -953,11 +953,11 @@ export default function App() {
     
     let element = document.getElementById('portfolio-content');
     
-    // หากไม่พบ และเราไม่ได้อยู่ในหน้า Preview ให้ลองสลับไปหน้า Preview ก่อน
-    if (!element && viewMode !== 'public') {
-      setViewMode('public');
+    // หากไม่พบ หรือเราไม่ได้อยู่ในหน้า Preview ให้ลองสลับไปหน้า Preview ก่อน
+    if (!element || viewMode !== 'public') {
+      if (viewMode !== 'public') setViewMode('public');
       // รอให้ React Render สักพักแล้วลองใหม่
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 1500));
       element = document.getElementById('portfolio-content');
     }
     
@@ -971,24 +971,33 @@ export default function App() {
         return new Promise(resolve => {
           img.onload = resolve;
           img.onerror = resolve;
+          if (!img.crossOrigin) img.crossOrigin = 'anonymous';
         });
       }));
-      await new Promise(r => setTimeout(r, 800)); // Extra wait for layout
+      await new Promise(r => setTimeout(r, 1000)); // Extra wait for layout and fonts
 
       const elWidth = element.offsetWidth || element.clientWidth || 800;
       const elHeight = element.offsetHeight || element.clientHeight || 1200;
 
       // ใช้ html2canvas แทน html-to-image
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: '#ffffff',
-        logging: false,
+        logging: true,
         width: elWidth,
-        height: elHeight
+        height: elHeight,
+        onclone: (clonedDoc) => {
+          const clonedEl = clonedDoc.getElementById('portfolio-content');
+          if (clonedEl) {
+            clonedEl.style.overflow = 'visible';
+            clonedEl.style.height = 'auto';
+          }
+        }
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
       
       if (!imgData || imgData.length < 500) {
         throw new Error("ไม่สามารถสร้างข้อมูลรูปภาพได้ (Image data is empty)");
@@ -1257,15 +1266,16 @@ export default function App() {
         await new Promise(r => setTimeout(r, 1500)); 
 
         const canvas = await html2canvas(renderContainer, {
-          scale: 2,
+          scale: 1.5,
           useCORS: true,
+          allowTaint: true,
           backgroundColor: '#ffffff',
-          logging: false,
+          logging: true,
           width: renderContainer.offsetWidth,
           height: renderContainer.offsetHeight
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgData = canvas.toDataURL('image/jpeg', 0.9);
 
         if (!imgData || imgData.length < 1000) {
           console.warn(`Page ${p+1} render produced empty image`);
