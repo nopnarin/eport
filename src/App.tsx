@@ -471,14 +471,37 @@ export default function App() {
           const db = getFirestore();
           const usersCol = collection(db, 'users');
           const snapshot = await getDocs(usersCol);
-          const usersData = snapshot.docs.map(doc => ({ 
+          
+          // 1. ดึงข้อมูลดิบ
+          const rawUsers = snapshot.docs.map(doc => ({ 
             id: doc.id, 
             ...doc.data() 
           }));
+
+          // 2. กรองเฉพาะผู้ใช้งานที่มีข้อมูล (มีชื่อ หรือ มีอีเมล) 
+          // เพื่อตัด Guest ที่แค่กดเข้ามาดูเล่นๆ ออกไป
+          const validUsers = rawUsers.filter(u => 
+            (u.name && u.name.trim() !== "") || 
+            (u.profile?.name && u.profile.name.trim() !== "") || 
+            (u.email && u.email.trim() !== "")
+          );
+
+          // 3. กำจัดรายการซ้ำโดยใช้อีเมลเป็นหลัก (ถ้ามีอีเมล)
+          // ถ้าไม่มีอีเมลให้ใช้ ID เป็นตัวแยก
+          const uniqueUsersMap = new Map();
+          validUsers.forEach(u => {
+            const key = u.email ? u.email.toLowerCase().trim() : `no-email-${u.id}`;
+            // ถ้าซ้ำ ให้เก็บอันที่มีข้อมูลเยอะกว่า หรืออันล่าสุด (ในที่นี้เราเรียงตาม ID/Timestamp ทีหลังได้)
+            if (!uniqueUsersMap.has(key)) {
+              uniqueUsersMap.set(key, u);
+            }
+          });
+
+          const finalUsers = Array.from(uniqueUsersMap.values());
           
           setSystemStats({
-            totalUsers: usersData.length,
-            allUsers: usersData.sort((a, b) => (b.id > a.id ? 1 : -1)) // เรียงลำดับล่าสุดขึ้นก่อน
+            totalUsers: finalUsers.length,
+            allUsers: finalUsers.sort((a, b) => (b.id > a.id ? 1 : -1)) // เรียงลำดับ UID ล่าสุดขึ้นก่อน
           });
         } catch (error) {
           console.error("Error fetching stats:", error);
@@ -1939,8 +1962,8 @@ export default function App() {
                                   <tr key={u.id} className="hover:bg-blue-50/30 transition-colors">
                                     <td className="px-6 py-4 text-sm text-slate-500 font-mono">{idx + 1}</td>
                                     <td className="px-6 py-4">
-                                      <div className="font-bold text-slate-800 text-sm">{u.profile?.name || 'ไม่ระบุชื่อ'}</div>
-                                      <div className="text-[10px] text-slate-500">{u.profile?.position || '-'}</div>
+                                      <div className="font-bold text-slate-800 text-sm">{u.name || u.profile?.name || 'ไม่ระบุชื่อ'}</div>
+                                      <div className="text-[10px] text-slate-500">{u.position || u.profile?.position || '-'}</div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-slate-600 font-medium">{u.email || '-'}</td>
                                     <td className="px-6 py-4 text-[9px] font-mono text-slate-400 text-right">{u.id}</td>
