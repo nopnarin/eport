@@ -15,8 +15,8 @@ import {
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc, getDocFromServer, updateDoc, getDocs } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
-import { toCanvas } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import * as htmlToImage from 'html-to-image';
 
 // --- Firebase Configuration ---
 const app = initializeApp(firebaseConfig);
@@ -957,33 +957,40 @@ export default function App() {
     if (!element && viewMode !== 'public') {
       setViewMode('public');
       // รอให้ React Render สักพักแล้วลองใหม่
-      setTimeout(() => handlePrintPDF(orientation), 600);
-      return;
+      await new Promise(r => setTimeout(r, 1000));
+      element = document.getElementById('portfolio-content');
     }
     
     try {
       if (!element) throw new Error("ไม่พบเนื้อหาที่ต้องการพิมพ์ (Element #portfolio-content not found)");
       
+      // Preload images in the element
+      const images = Array.from(element.getElementsByTagName('img'));
+      await Promise.all(images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      }));
+      await new Promise(r => setTimeout(r, 800)); // Extra wait for layout
+
       const elWidth = element.offsetWidth || element.clientWidth || 800;
       const elHeight = element.offsetHeight || element.clientHeight || 1200;
 
-      // ใช้ html-to-image จับภาพเป็น Canvas เพื่อความเสถียร
-      const { toCanvas } = await import('html-to-image');
-      const canvas = await toCanvas(element, { 
+      // ใช้ html2canvas แทน html-to-image
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
         backgroundColor: '#ffffff',
-        pixelRatio: 1.5,
+        logging: false,
         width: elWidth,
-        height: elHeight,
-        style: {
-          transform: 'scale(1)',
-          transformOrigin: 'top left'
-        },
-        cacheBust: true
+        height: elHeight
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       
-      if (!imgData || imgData.length < 100) {
+      if (!imgData || imgData.length < 500) {
         throw new Error("ไม่สามารถสร้างข้อมูลรูปภาพได้ (Image data is empty)");
       }
       
@@ -997,23 +1004,27 @@ export default function App() {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
-      // คำนวณความสูงเมื่อย่อขยายให้พอดีความกว้างหน้า A4
-      const ratio = pageWidth / elWidth;
+      const margin = 10;
+      const pdfWidth = pageWidth - (margin * 2);
+      const pdfHeight = pageHeight - (margin * 2);
+
+      // คำนวณความสูงเมื่อย่อขยายให้พอดีความกว้างหน้า A4 (ลบขอบ)
+      const ratio = pdfWidth / elWidth;
       const scaledHeight = elHeight * ratio;
 
       let heightLeft = scaledHeight;
       let position = 0;
 
-      // หน้าแรก
-      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, scaledHeight);
-      heightLeft -= pageHeight;
+      // เพิ่มหน้าแรก
+      pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth, scaledHeight);
+      heightLeft -= pdfHeight;
 
       // หน้าต่อๆ ไปหากเนื้อหายาวเกินหน้าเดียว
       while (heightLeft > 0) {
         position = heightLeft - scaledHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pageWidth, scaledHeight);
-        heightLeft -= pageHeight;
+        pdf.addImage(imgData, 'JPEG', margin, position + margin, pdfWidth, scaledHeight);
+        heightLeft -= pdfHeight;
       }
 
       pdf.save(`E-Portfolio_${profile.name || 'document'}.pdf`);
@@ -1218,7 +1229,6 @@ export default function App() {
         });
       }));
 
-      const { toJpeg } = await import('html-to-image');
       const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
       const margin = 10;
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -1229,7 +1239,7 @@ export default function App() {
       for (let p = 0; p < pagesHTML.length; p++) {
         const renderContainer = document.createElement('div');
         renderContainer.className = 'pdf-page-render';
-        renderContainer.style.position = 'fixed'; // เปลี่ยนเป็น fixed
+        renderContainer.style.position = 'fixed';
         renderContainer.style.left = '-9999px';
         renderContainer.style.top = '0';
         renderContainer.style.width = containerWidthStyle;
@@ -1237,23 +1247,27 @@ export default function App() {
         renderContainer.style.backgroundColor = "#ffffff";
         renderContainer.style.zIndex = '-1000';
         renderContainer.innerHTML = `
-          <div style="width: 100%; height: 100%; background: white; padding: 0; margin: 0; overflow: hidden;">
+          <div style="width: 100%; height: 100%; background: white; padding: 0; margin: 0; overflow: hidden; display: flex; flex-direction: column;">
             ${pagesHTML[p]}
           </div>
         `;
         document.body.appendChild(renderContainer);
 
         // Wait to render
-        await new Promise(r => setTimeout(r, 700)); 
+        await new Promise(r => setTimeout(r, 1500)); 
 
-        const { toPng } = await import('html-to-image');
-        const imgData = await toPng(renderContainer, { 
+        const canvas = await html2canvas(renderContainer, {
+          scale: 2,
+          useCORS: true,
           backgroundColor: '#ffffff',
-          pixelRatio: 1.8,
-          cacheBust: true
+          logging: false,
+          width: renderContainer.offsetWidth,
+          height: renderContainer.offsetHeight
         });
 
-        if (!imgData || imgData.length < 500) {
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+        if (!imgData || imgData.length < 1000) {
           console.warn(`Page ${p+1} render produced empty image`);
         } else {
           if (p > 0) pdf.addPage();
