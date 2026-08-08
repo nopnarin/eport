@@ -429,54 +429,41 @@ export default function App() {
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // ตรวจสอบเช็คเช็คชั่นก่อน
       const savedAuth = sessionStorage.getItem('isAdminAuthenticated');
-      
-      // จะเป็น Master Mode ก็ต่อเมื่อมีการเซฟลง Session (จากการใส่รหัสผ่าน) เท่านั้น
-      // และต้องไม่มี User ที่เป็น Real Firebase User (Google Account) มาทับ
-      const isMasterMode = savedAuth === 'true' && (!currentUser || currentUser.isAnonymous);
+      const isMasterMode = savedAuth === 'true';
 
-      if (currentUser) {
-        currentUser.isRealFirebaseUser = !currentUser.isAnonymous;
-        
-        if (isMasterMode) {
-          setUser({ 
-            ...currentUser, 
-            uid: 'admin-master', 
-            isRealFirebaseUser: true, 
-            isMasterAdmin: true,
-            isGuest: false // มั่นใจว่าไม่ใช่ Guest
-          });
-          setIsAdminAuthenticated(true);
-          setShowLanding(false);
-          setViewMode('admin');
-        } else {
-          setUser(currentUser);
-          // ถ้าเป็น Google Login (isRealFirebaseUser) ให้เป็น Admin ของตัวเอง
-          if (currentUser.isRealFirebaseUser) {
-            setIsAdminAuthenticated(true);
-            setShowLanding(false);
-            setViewMode('admin');
-          }
-        }
-      } else {
-        if (isMasterMode) {
-           setUser({ 
-             uid: 'admin-master', 
-             email: 'admin@eportfolio.local', 
-             isRealFirebaseUser: true, 
-             isMasterAdmin: true,
-             isGuest: false 
-           });
-           setIsAdminAuthenticated(true);
-           setShowLanding(false);
-           setViewMode('admin');
-        } else {
-          setUser(null);
-          setShowLanding(true);
-          setIsAdminAuthenticated(false);
-        }
+      if (currentUser && !currentUser.isAnonymous) {
+        // 1. กรณีเป็นผู้ใช้จริง (Google Account)
+        console.log("Logged in as Google User:", currentUser.email);
+        setUser(currentUser);
+        setIsAdminAuthenticated(true);
+        setShowLanding(false);
+        setViewMode('admin');
+        // เคลียร์ค่า Master Admin ออกถ้ามี เพื่อไม่ให้สับสน
+        if (isMasterMode) sessionStorage.removeItem('isAdminAuthenticated');
+      } 
+      else if (isMasterMode) {
+        // 2. กรณีเป็น Master Admin (ล็อคอินด้วยรหัสผ่าน)
+        console.log("Logged in as Master Admin");
+        setUser({ 
+          uid: 'admin-master', 
+          email: 'admin@eportfolio.local',
+          isMasterAdmin: true,
+          isGuest: false,
+          displayName: 'Admin'
+        });
+        setIsAdminAuthenticated(true);
+        setShowLanding(false);
+        setViewMode('admin');
+      } 
+      else {
+        // 3. กรณีไม่ได้เข้าสู่ระบบ หรือเป็น Guest (Anonymous)
+        console.log("User state:", currentUser ? "Guest" : "Not logged in");
+        setUser(currentUser);
+        setIsAdminAuthenticated(false);
+        setShowLanding(true);
       }
+      
       setLoading(false);
     });
     return () => unsubscribe();
@@ -484,17 +471,38 @@ export default function App() {
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
+    // บังคับให้เลือก Account ใหม่เสมอเพื่อป้องกันการค้าง
+    provider.setCustomParameters({ prompt: 'select_account' });
+    
     try {
       setLoading(true);
-      // Clear admin session to ensure we go into personal mode
+      // เคลียร์สถานะเก่าก่อนเริ่มใหม่
       setIsAdminAuthenticated(false);
       sessionStorage.removeItem('isAdminAuthenticated');
-      await signInWithPopup(auth, provider);
+      
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        // Listener (onAuthStateChanged) จะทำหน้าที่เปลี่ยน State ให้เอง 
+        // แต่ใส่ไว้ตรงนี้เพื่อความรวดเร็วในการตอบสนอง (UI Optimistic Update)
+        setIsAdminAuthenticated(true);
+        setShowLanding(false);
+        setViewMode('admin');
+      }
     } catch (error) {
       console.error("Google Login Error:", error);
       setAuthErrorCode(error.code);
+      if (error.code === 'auth/unauthorized-domain') {
+        alert("โดเมนนี้ยังไม่ได้รับอนุญาตใน Firebase! กรุณาเพิ่มโดเมนใน Authorized Domains");
+      } else if (error.code === 'auth/popup-blocked') {
+        alert("ป๊อปอัพถูกบล็อก! กรุณาอนุญาตให้เปิดป๊อปอัพสำหรับเว็บนี้");
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        // ผู้ใช้ปิดหน้าต่างเอง ไม่ต้องทำอะไร
+      } else {
+        alert("เข้าสู่ระบบไม่สำเร็จ: " + error.message);
+      }
     } finally {
-      setLoading(false);
+      // อย่าเพิ่งปิด Loading ทันทีเพื่อให้ Listener ทำงานเสร็จก่อน
+      setTimeout(() => setLoading(false), 500);
     }
   };
 
