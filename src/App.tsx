@@ -398,41 +398,20 @@ export default function App() {
       setShowLanding(false);
     }
 
-    const savedAuth = sessionStorage.getItem('isAdminAuthenticated');
+    const savedAuth = localStorage.getItem('isAdminAuthenticated');
     if (savedAuth === 'true') {
       setIsAdminAuthenticated(true);
       setShowLanding(false);
-      setUser({ uid: 'admin-master', email: 'admin@eportfolio.local', isRealFirebaseUser: false });
+      setUser({ 
+        uid: 'admin-master', 
+        email: 'admin@eportfolio.local', 
+        isMasterAdmin: true,
+        displayName: 'Admin'
+      });
     }
 
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          // สั่ง Login แบบ Anonymous
-          await signInAnonymously(auth);
-        }
-      } catch (error) {
-        console.error("Auth error details:", error);
-        setAuthErrorCode(error.code);
-        if (error.code === 'auth/admin-restricted-operation') {
-          console.warn("Anonymous Auth is disabled in Firebase Console.");
-          setUser(prev => prev?.isRealFirebaseUser ? prev : { uid: 'guest-user', isGuest: true, authError: error.code });
-        } else if (error.code === 'auth/unauthorized-domain') {
-          console.error("This domain is not authorized in Firebase Console.");
-          setUser(prev => prev?.isRealFirebaseUser ? prev : { uid: 'guest-user', isGuest: true, authError: error.code });
-        } else {
-          console.error("Auth error message:", error.message);
-          setUser(prev => prev?.isRealFirebaseUser ? prev : { uid: 'guest-user', isGuest: true, authError: error.code });
-        }
-        setLoading(false);
-      }
-    };
-    initAuth();
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      const savedAuth = sessionStorage.getItem('isAdminAuthenticated');
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      const savedAuth = localStorage.getItem('isAdminAuthenticated');
       const isMasterMode = savedAuth === 'true';
 
       if (currentUser && !currentUser.isAnonymous) {
@@ -443,7 +422,7 @@ export default function App() {
         setShowLanding(false);
         setViewMode('admin');
         // เคลียร์ค่า Master Admin ออกถ้ามี เพื่อไม่ให้สับสน
-        if (isMasterMode) sessionStorage.removeItem('isAdminAuthenticated');
+        if (isMasterMode) localStorage.removeItem('isAdminAuthenticated');
       } 
       else if (isMasterMode) {
         // 2. กรณีเป็น Master Admin (ล็อคอินด้วยรหัสผ่าน)
@@ -459,12 +438,23 @@ export default function App() {
         setShowLanding(false);
         setViewMode('admin');
       } 
+      else if (!currentUser) {
+        // 3. กรณีไม่ได้เข้าสู่ระบบเลย ให้ลองเป็น Anonymous อัตโนมัติ (เพื่อความลื่นไหลในการใช้ Guest)
+        try {
+          await signInAnonymously(auth);
+        } catch (e) {
+          console.error("Auto Anonymous Signin Failed", e);
+        }
+      }
       else {
-        // 3. กรณีไม่ได้เข้าสู่ระบบ หรือเป็น Guest (Anonymous)
-        console.log("User state:", currentUser ? "Guest" : "Not logged in");
+        // 4. กรณีเป็น Guest (Anonymous)
+        console.log("User state: Guest");
         setUser(currentUser);
-        setIsAdminAuthenticated(false);
-        setShowLanding(true);
+        // ถ้าไม่ได้มี savedAuth ก็ให้ไปที่ Landing
+        if (!isMasterMode) {
+          setIsAdminAuthenticated(false);
+          setShowLanding(true);
+        }
       }
       
       setLoading(false);
@@ -509,7 +499,7 @@ export default function App() {
       setLoading(true);
       // เคลียร์สถานะเก่าก่อนเริ่มใหม่
       setIsAdminAuthenticated(false);
-      sessionStorage.removeItem('isAdminAuthenticated');
+      localStorage.removeItem('isAdminAuthenticated');
       
       const result = await signInWithPopup(auth, provider);
       if (result.user) {
@@ -543,7 +533,7 @@ export default function App() {
     try {
       await signOut(auth);
       setIsAdminAuthenticated(false);
-      sessionStorage.removeItem('isAdminAuthenticated');
+      localStorage.removeItem('isAdminAuthenticated');
       setShowLanding(true);
       setUser(null);
       setPasswordInput('');
@@ -911,7 +901,7 @@ export default function App() {
         if (auth.currentUser) await signOut(auth);
         
         setIsAdminAuthenticated(true);
-        sessionStorage.setItem('isAdminAuthenticated', 'true');
+        localStorage.setItem('isAdminAuthenticated', 'true');
         setShowLanding(false);
         setViewMode('admin');
         setLoginError('');
