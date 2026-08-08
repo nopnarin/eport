@@ -359,7 +359,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('profile'); // Default to profile for new users
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState('admin'); 
-  const [showLanding, setShowLanding] = useState(true); // Start with landing page for login
+  const [showLanding, setShowLanding] = useState(true); // เริ่มต้นที่หน้าเข้าสู่ระบบ
   const [publicUserUid, setPublicUserUid] = useState(null); // สำหรับดู Portfolio ของคนอื่นผ่านลิงก์
   
   const [profile, setProfile] = useState(INITIAL_PROFILE);
@@ -1218,7 +1218,7 @@ export default function App() {
             <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/20">
               <UserCheck size={32} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">E-Portfolio ครูไทย</h1>
+            <h1 className="text-2xl font-bold tracking-tight">E-Portfolio</h1>
             <p className="text-slate-400 mt-2 text-sm font-medium">จัดการผลงานระดับมืออาชีพ</p>
           </div>
           
