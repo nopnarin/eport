@@ -362,7 +362,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState('admin'); 
   const [showLanding, setShowLanding] = useState(true); // เริ่มต้นที่หน้าเข้าสู่ระบบ
   const [publicUserUid, setPublicUserUid] = useState(null); // สำหรับดู Portfolio ของคนอื่นผ่านลิงก์
-  const [systemStats, setSystemStats] = useState({ totalUsers: 0, recentUsers: [] });
+  const [systemStats, setSystemStats] = useState({ totalUsers: 0, allUsers: [] });
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   
   const [profile, setProfile] = useState(INITIAL_PROFILE);
@@ -474,18 +474,21 @@ export default function App() {
 
   // Fetch system stats for Master Admin
   useEffect(() => {
-    if (user?.isMasterAdmin && activeTab === 'system-stats') {
+    if (activeTab === 'system-stats') {
       const fetchStats = async () => {
         setIsStatsLoading(true);
         try {
           const db = getFirestore();
           const usersCol = collection(db, 'users');
           const snapshot = await getDocs(usersCol);
-          const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const usersData = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data() 
+          }));
           
           setSystemStats({
-            totalUsers: users.length,
-            recentUsers: users.slice(-10).reverse() // Show last 10 users
+            totalUsers: usersData.length,
+            allUsers: usersData.sort((a, b) => (b.id > a.id ? 1 : -1)) // เรียงลำดับล่าสุดขึ้นก่อน
           });
         } catch (error) {
           console.error("Error fetching stats:", error);
@@ -495,7 +498,7 @@ export default function App() {
       };
       fetchStats();
     }
-  }, [user, activeTab]);
+  }, [activeTab]);
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -1850,7 +1853,7 @@ export default function App() {
               </div>
             )}
 
-            {['profile', 'settings', 'theme'].includes(activeTab) && (
+            {['profile', 'settings', 'theme', 'system-stats'].includes(activeTab) && (
               !isAdminAuthenticated ? (
                 <div className="flex items-center justify-center p-4 pt-10">
                   <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-sm">
@@ -1918,18 +1921,18 @@ export default function App() {
                       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                           <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                            <History size={18} className="text-blue-600" /> รายชื่อผู้สมัครใช้งานล่าสุด
+                            <Users size={18} className="text-blue-600" /> รายชื่อผู้ใช้งานทั้งหมดในระบบ
                           </h3>
-                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Top 10 Latest</span>
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wider">{systemStats.totalUsers} USERS</span>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto max-h-[500px] custom-scrollbar">
                           <table className="w-full text-left border-collapse">
                             <thead>
-                              <tr className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
-                                <th className="px-6 py-4 border-b">ลำดับ</th>
-                                <th className="px-6 py-4 border-b">ชื่อ-นามสกุล</th>
-                                <th className="px-6 py-4 border-b">อีเมล</th>
-                                <th className="px-6 py-4 border-b">UID</th>
+                              <tr className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-bold sticky top-0 z-10 shadow-sm">
+                                <th className="px-6 py-4 border-b bg-slate-50">ลำดับ</th>
+                                <th className="px-6 py-4 border-b bg-slate-50">ชื่อ-นามสกุล</th>
+                                <th className="px-6 py-4 border-b bg-slate-50">อีเมล</th>
+                                <th className="px-6 py-4 border-b bg-slate-50 text-right">UID</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -1937,12 +1940,12 @@ export default function App() {
                                 <tr>
                                   <td colSpan="4" className="px-6 py-10 text-center text-slate-400 italic">กำลังโหลดข้อมูล...</td>
                                 </tr>
-                              ) : systemStats.recentUsers.length === 0 ? (
+                              ) : systemStats.allUsers.length === 0 ? (
                                 <tr>
                                   <td colSpan="4" className="px-6 py-10 text-center text-slate-400 italic">ยังไม่มีข้อมูลผู้ใช้งาน</td>
                                 </tr>
                               ) : (
-                                systemStats.recentUsers.map((u, idx) => (
+                                systemStats.allUsers.map((u, idx) => (
                                   <tr key={u.id} className="hover:bg-blue-50/30 transition-colors">
                                     <td className="px-6 py-4 text-sm text-slate-500 font-mono">{idx + 1}</td>
                                     <td className="px-6 py-4">
@@ -1950,7 +1953,7 @@ export default function App() {
                                       <div className="text-[10px] text-slate-500">{u.profile?.position || '-'}</div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-slate-600 font-medium">{u.email || '-'}</td>
-                                    <td className="px-6 py-4 text-[10px] font-mono text-slate-400">{u.id}</td>
+                                    <td className="px-6 py-4 text-[9px] font-mono text-slate-400 text-right">{u.id}</td>
                                   </tr>
                                 ))
                               )}
