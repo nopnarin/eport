@@ -493,6 +493,8 @@ export default function App() {
       setAuthErrorCode(error.code);
       if (error.code === 'auth/unauthorized-domain') {
         alert("โดเมนนี้ยังไม่ได้รับอนุญาตใน Firebase! กรุณาเพิ่มโดเมนใน Authorized Domains");
+      } else if (error.code === 'auth/operation-not-allowed') {
+        alert("ข้อผิดพลาด: ยังไม่ได้เปิดใช้งาน Google Sign-in ใน Firebase Console\n\nวิธีแก้:\n1. ไปที่ Firebase Console > Authentication > Sign-in method\n2. เพิ่ม Google และกด Enable");
       } else if (error.code === 'auth/popup-blocked') {
         alert("ป๊อปอัพถูกบล็อก! กรุณาอนุญาตให้เปิดป๊อปอัพสำหรับเว็บนี้");
       } else if (error.code === 'auth/popup-closed-by-user') {
