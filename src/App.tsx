@@ -67,6 +67,7 @@ const SCHEMA = {
     fields: [
       { key: 'courseName', label: 'ชื่อหลักสูตร', type: 'text', required: true },
       { key: 'organization', label: 'หน่วยงานผู้จัด', type: 'text', required: true },
+      { key: 'location', label: 'สถานที่อบรม', type: 'text' },
       { key: 'dateStr', label: 'ระยะเวลา (เช่น 1-2 ส.ค. 66)', type: 'text', required: true },
       { key: 'hours', label: 'จำนวนชั่วโมง', type: 'number', required: true },
       { key: 'fileUrl', label: 'ลิงก์วุฒิบัตร', type: 'url' },
