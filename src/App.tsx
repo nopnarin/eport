@@ -3,7 +3,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Home, Award, FileText, BookOpen, Mic, Briefcase, Users, 
   Settings, LogOut, Plus, Edit2, Trash2, Link as LinkIcon, 
-  Printer, User, UserCheck, Menu, X, Save, Eye, Palette, Lock, Upload, Loader2, ChevronDown, ChevronUp, FileSpreadsheet, AlertCircle, Filter, Monitor
+  Printer, User, UserCheck, Menu, X, Save, Eye, Palette, Lock, Upload, Loader2, ChevronDown, ChevronUp, FileSpreadsheet, AlertCircle, Filter, Monitor,
+  BarChart3, CheckCircle2, Database, History, ShieldAlert
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { initializeApp } from 'firebase/app';
@@ -12,7 +13,7 @@ import {
   GoogleAuthProvider, signInWithPopup, signOut,
   signInWithEmailAndPassword, createUserWithEmailAndPassword
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc, getDocFromServer, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, deleteDoc, getDocFromServer, updateDoc, getDocs } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 import { toCanvas } from 'html-to-image';
 import { jsPDF } from 'jspdf';
@@ -361,6 +362,8 @@ export default function App() {
   const [viewMode, setViewMode] = useState('admin'); 
   const [showLanding, setShowLanding] = useState(true); // เริ่มต้นที่หน้าเข้าสู่ระบบ
   const [publicUserUid, setPublicUserUid] = useState(null); // สำหรับดู Portfolio ของคนอื่นผ่านลิงก์
+  const [systemStats, setSystemStats] = useState({ totalUsers: 0, recentUsers: [] });
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
   
   const [profile, setProfile] = useState(INITIAL_PROFILE);
   const [portfolioData, setPortfolioData] = useState({
@@ -468,6 +471,31 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Fetch system stats for Master Admin
+  useEffect(() => {
+    if (user?.isMasterAdmin && activeTab === 'system-stats') {
+      const fetchStats = async () => {
+        setIsStatsLoading(true);
+        try {
+          const db = getFirestore();
+          const usersCol = collection(db, 'users');
+          const snapshot = await getDocs(usersCol);
+          const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          
+          setSystemStats({
+            totalUsers: users.length,
+            recentUsers: users.slice(-10).reverse() // Show last 10 users
+          });
+        } catch (error) {
+          console.error("Error fetching stats:", error);
+        } finally {
+          setIsStatsLoading(false);
+        }
+      };
+      fetchStats();
+    }
+  }, [user, activeTab]);
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -1606,6 +1634,19 @@ export default function App() {
           <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
             <div className="text-[11px] font-semibold text-blue-300 uppercase tracking-wider mb-1.5 mt-2 pl-3">ระบบจัดการ</div>
             <NavItem id="dashboard" icon={Home} label="แดชบอร์ดภาพรวม" />
+            {user?.isMasterAdmin && (
+              <button
+                onClick={() => setActiveTab('system-stats')}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group mb-1 ${
+                  activeTab === 'system-stats' 
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200' 
+                    : 'text-slate-400 hover:bg-blue-50 hover:text-blue-600'
+                }`}
+              >
+                <BarChart3 size={18} className={activeTab === 'system-stats' ? 'text-white' : 'group-hover:text-blue-600'} />
+                <span className="text-sm font-medium">สถิติระบบ</span>
+              </button>
+            )}
             
             <div className="text-[11px] font-semibold text-blue-300 uppercase tracking-wider mb-1.5 mt-4 pl-3">แฟ้มข้อมูล</div>
             {Object.values(SCHEMA).map(cat => {
@@ -1840,6 +1881,94 @@ export default function App() {
               ) : (
                 <div className="max-w-4xl mx-auto space-y-6">
                   
+                  {activeTab === 'system-stats' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
+                          <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">
+                            <Users size={28} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-500">ผู้ใช้งานทั้งหมด</p>
+                            <h4 className="text-2xl font-bold text-slate-900">{isStatsLoading ? '...' : systemStats.totalUsers} ท่าน</h4>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
+                          <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-green-600">
+                            <CheckCircle2 size={28} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-500">สถานะระบบ</p>
+                            <h4 className="text-2xl font-bold text-slate-900">ปกติ</h4>
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
+                          <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600">
+                            <Database size={28} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-500">ฐานข้อมูล</p>
+                            <h4 className="text-2xl font-bold text-slate-900">Cloud Firestore</h4>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                          <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                            <History size={18} className="text-blue-600" /> รายชื่อผู้สมัครใช้งานล่าสุด
+                          </h3>
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Top 10 Latest</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                                <th className="px-6 py-4 border-b">ลำดับ</th>
+                                <th className="px-6 py-4 border-b">ชื่อ-นามสกุล</th>
+                                <th className="px-6 py-4 border-b">อีเมล</th>
+                                <th className="px-6 py-4 border-b">UID</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {isStatsLoading ? (
+                                <tr>
+                                  <td colSpan="4" className="px-6 py-10 text-center text-slate-400 italic">กำลังโหลดข้อมูล...</td>
+                                </tr>
+                              ) : systemStats.recentUsers.length === 0 ? (
+                                <tr>
+                                  <td colSpan="4" className="px-6 py-10 text-center text-slate-400 italic">ยังไม่มีข้อมูลผู้ใช้งาน</td>
+                                </tr>
+                              ) : (
+                                systemStats.recentUsers.map((u, idx) => (
+                                  <tr key={u.id} className="hover:bg-blue-50/30 transition-colors">
+                                    <td className="px-6 py-4 text-sm text-slate-500 font-mono">{idx + 1}</td>
+                                    <td className="px-6 py-4">
+                                      <div className="font-bold text-slate-800 text-sm">{u.profile?.name || 'ไม่ระบุชื่อ'}</div>
+                                      <div className="text-[10px] text-slate-500">{u.profile?.position || '-'}</div>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-slate-600 font-medium">{u.email || '-'}</td>
+                                    <td className="px-6 py-4 text-[10px] font-mono text-slate-400">{u.id}</td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex gap-4 items-start">
+                        <ShieldAlert size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-800 leading-relaxed">
+                          <p className="font-bold mb-1">นโยบายความเป็นส่วนตัวและการจัดการข้อมูล:</p>
+                          <p>ข้อมูลที่แสดงด้านบนเป็นเพียงข้อมูลพื้นฐานเพื่อการตรวจสอบจำนวนผู้ใช้งานในระบบเท่านั้น ผู้ดูแลระบบควรระมัดระวังการเผยแพร่ข้อมูลเหล่านี้สู่สาธารณะตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล (PDPA)</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {activeTab === 'profile' && (
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                       <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2 flex items-center">
