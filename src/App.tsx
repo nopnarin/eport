@@ -1440,9 +1440,6 @@ export default function App() {
                 <span className="font-bold text-slate-800 text-lg hidden sm:block tracking-wide">E-Portfolio Preview</span>
               </div>
               <div className="flex items-center gap-2 md:gap-3">
-                <button onClick={() => setPrintModalState({ target: 'overview' })} disabled={isPrinting} className={`text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 md:px-4 py-2 rounded-lg transition flex items-center font-medium ${isPrinting ? 'opacity-50 cursor-wait' : ''}`}>
-                  <Printer size={16} className="md:mr-2" /> <span className="hidden md:inline">{isPrinting ? 'กำลังสร้าง...' : 'ดาวน์โหลด PDF'}</span>
-                </button>
                 <button onClick={() => setViewMode('admin')} className="text-sm bg-slate-800 hover:bg-slate-900 text-white px-3 md:px-4 py-2 rounded-lg transition flex items-center shadow-sm font-medium">
                   <Edit2 size={16} className="md:mr-2" /> <span className="hidden md:inline">กลับหน้าระบบหลัก</span>
                 </button>
