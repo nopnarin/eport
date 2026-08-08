@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "settings": { "type": "object" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "bio": { "type": "string" },
+        "googleDriveLink": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
+    "PortfolioItem": {
+      "title": "Portfolio Item",
+      "description": "Generic item for certificates, orders, etc.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "organization": { "type": "string" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "year": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Root user document"
+    },
+    "/users/{userId}/certificates/{id}": {
+      "schema": "PortfolioItem",
+      "description": "Certificates and awards"
+    },
+    "/users/{userId}/orders/{id}": {
+      "schema": "PortfolioItem",
+      "description": "Appointment orders"
+    },
+    "/users/{userId}/trainings/{id}": {
+      "schema": "PortfolioItem",
+      "description": "Training and self-development"
+    },
+    "/users/{userId}/speaker/{id}": {
+      "schema": "PortfolioItem",
+      "description": "Guest speaker or lecturer activities"
+    },
+    "/users/{userId}/teacherWorks/{id}": {
+      "schema": "PortfolioItem",
+      "description": "Teacher's specialized works"
+    },
+    "/users/{userId}/studentWorks/{id}": {
+      "schema": "PortfolioItem",
+      "description": "Student work and awards"
+    }
+  }
+}
