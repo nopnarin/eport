@@ -944,7 +944,7 @@ export default function App() {
   // ----------------------------------------------------
   // ระบบสร้าง PDF (หน้าภาพรวม)
   // ----------------------------------------------------
-  const handlePrintPDF = async (orientation = 'portrait') => {
+  const handlePrintPDF = async (orientation: 'portrait' | 'landscape' = 'portrait') => {
     setIsPrinting(true);
     
     // เลื่อนขึ้นบนสุดเพื่อกันปัญหาภาพแหว่ง
@@ -956,64 +956,69 @@ export default function App() {
     if (!element && viewMode !== 'public') {
       setViewMode('public');
       // รอให้ React Render สักพักแล้วลองใหม่
-      setTimeout(() => handlePrintPDF(orientation), 500);
+      setTimeout(() => handlePrintPDF(orientation), 600);
       return;
     }
     
     try {
-      if (!element) throw new Error("ไม่พบเนื้อหาที่ต้องการพิมพ์");
+      if (!element) throw new Error("ไม่พบเนื้อหาที่ต้องการพิมพ์ (Element #portfolio-content not found)");
       
       const elWidth = element.offsetWidth || element.clientWidth || 800;
       const elHeight = element.offsetHeight || element.clientHeight || 1200;
 
-      // ใช้ html-to-image จับภาพเป็น JPEG ตรงๆ
-      const { toJpeg } = await import('html-to-image');
-      const imgData = await toJpeg(element, { 
-        quality: 0.98, 
+      // ใช้ html-to-image จับภาพเป็น Canvas เพื่อความเสถียร
+      const { toCanvas } = await import('html-to-image');
+      const canvas = await toCanvas(element, { 
         backgroundColor: '#ffffff',
-        pixelRatio: 2,
+        pixelRatio: 1.5,
         width: elWidth,
-        height: elHeight
+        height: elHeight,
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left'
+        },
+        cacheBust: true
       });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      
+      if (!imgData || imgData.length < 100) {
+        throw new Error("ไม่สามารถสร้างข้อมูลรูปภาพได้ (Image data is empty)");
+      }
       
       // สร้างหน้ากระดาษ A4
       const pdf = new jsPDF({
-        orientation: orientation,
+        orientation: orientation as any,
         unit: 'mm',
         format: 'a4'
       });
       
-      const margin = 10;
-      const pdfWidth = pdf.internal.pageSize.getWidth() - (margin * 2);
-      const pdfHeight = pdf.internal.pageSize.getHeight() - (margin * 2);
-
-      // คำนวณความสูงเมื่อย่อขยายเข้ากับหน้า A4
-      const ratio = pdfWidth / elWidth;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      // คำนวณความสูงเมื่อย่อขยายให้พอดีความกว้างหน้า A4
+      const ratio = pageWidth / elWidth;
       const scaledHeight = elHeight * ratio;
-
-      if (!isFinite(scaledHeight) || scaledHeight <= 0) {
-          throw new Error(`การคำนวณขนาดผิดพลาด (elWidth: ${elWidth}, elHeight: ${elHeight})`);
-      }
 
       let heightLeft = scaledHeight;
       let position = 0;
 
-      // เพิ่มภาพลงใน PDF (หน้าแรก)
-      pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth, Math.max(1, scaledHeight));
-      heightLeft -= pdfHeight;
+      // หน้าแรก
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, scaledHeight);
+      heightLeft -= pageHeight;
 
-      // หากข้อมูลยาวเกิน 1 หน้า ให้เพิ่มหน้าและตัดครอบต่อไป
+      // หน้าต่อๆ ไปหากเนื้อหายาวเกินหน้าเดียว
       while (heightLeft > 0) {
-        position -= pdfHeight;
+        position = heightLeft - scaledHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', margin, margin + position, pdfWidth, Math.max(1, scaledHeight));
-        heightLeft -= pdfHeight;
+        pdf.addImage(imgData, 'JPEG', 0, position, pageWidth, scaledHeight);
+        heightLeft -= pageHeight;
       }
 
-      pdf.save(`E-Portfolio_${profile.name}.pdf`);
-    } catch (err) {
-      console.error('PDF error:', err);
-      alert("เกิดข้อผิดพลาดในการสร้างเอกสาร PDF: " + (err.message || ''));
+      pdf.save(`E-Portfolio_${profile.name || 'document'}.pdf`);
+    } catch (err: any) {
+      console.error('Detailed PDF error:', err);
+      alert("เกิดข้อผิดพลาดในการสร้างเอกสาร PDF: " + (err.message || 'Unknown error'));
     } finally {
       setIsPrinting(false);
     }
@@ -1215,42 +1220,59 @@ export default function App() {
       const { toJpeg } = await import('html-to-image');
       const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
       const margin = 10;
-      const pdfWidth = pdf.internal.pageSize.getWidth() - (margin * 2);
-      const pdfHeight = pdf.internal.pageSize.getHeight() - (margin * 2);
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const pdfWidth = pageWidth - (margin * 2);
+      const pdfHeight = pageHeight - (margin * 2);
 
       for (let p = 0; p < pagesHTML.length; p++) {
         const renderContainer = document.createElement('div');
         renderContainer.className = 'pdf-page-render';
-        renderContainer.style.position = 'relative';
+        renderContainer.style.position = 'fixed'; // เปลี่ยนเป็น fixed
+        renderContainer.style.left = '-9999px';
+        renderContainer.style.top = '0';
         renderContainer.style.width = containerWidthStyle;
-        renderContainer.style.height = containerHeightStyle; // Force strict size proportion
+        renderContainer.style.height = containerHeightStyle;
         renderContainer.style.backgroundColor = "#ffffff";
-        renderContainer.innerHTML = pagesHTML[p];
-        tempContainer.appendChild(renderContainer);
+        renderContainer.style.zIndex = '-1000';
+        renderContainer.innerHTML = `
+          <div style="width: 100%; height: 100%; background: white; padding: 0; margin: 0; overflow: hidden;">
+            ${pagesHTML[p]}
+          </div>
+        `;
+        document.body.appendChild(renderContainer);
 
         // Wait to render
-        await new Promise(r => setTimeout(r, 400)); 
+        await new Promise(r => setTimeout(r, 700)); 
 
         const imgData = await toJpeg(renderContainer, { 
-          quality: 0.98, 
+          quality: 0.9, 
           backgroundColor: '#ffffff',
-          pixelRatio: 2,
+          pixelRatio: 1.5,
           width: renderContainer.offsetWidth,
-          height: renderContainer.offsetHeight
+          height: renderContainer.offsetHeight,
+          cacheBust: true
         });
 
-        if (p > 0) pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth, pdfHeight);
-        tempContainer.removeChild(renderContainer);
+        if (!imgData || imgData.length < 100) {
+          console.warn(`Page ${p+1} render produced empty image`);
+        } else {
+          if (p > 0) pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth, pdfHeight);
+        }
+        
+        if (document.body.contains(renderContainer)) {
+          document.body.removeChild(renderContainer);
+        }
       }
 
-      pdf.save(`${category.name}_${profile.name}.pdf`);
-    } catch (err) {
-      console.error('PDF error:', err);
-      alert("เกิดข้อผิดพลาดในการสร้างเอกสาร PDF: " + (err.message || ''));
+      pdf.save(`${category.name || 'Category'}_${profile.name || 'document'}.pdf`);
+    } catch (err: any) {
+      console.error('Detailed Category PDF error:', err);
+      alert("เกิดข้อผิดพลาดในการส่งออก PDF: " + (err.message || 'Unknown error'));
     } finally {
       setIsPrintingCategory(false);
-      if (document.body.contains(tempContainer)) {
+      if (tempContainer && document.body.contains(tempContainer)) {
         document.body.removeChild(tempContainer);
       }
     }
