@@ -112,7 +112,8 @@ const INITIAL_PROFILE = {
   photoUrl: DEFAULT_AVATAR,
   email: '',
   phone: '',
-  googleDriveLink: ''
+  googleDriveLink: '',
+  isCommunityVisible: false
 };
 
 // 50 Themes Collection
@@ -364,6 +365,8 @@ export default function App() {
   const [publicUserUid, setPublicUserUid] = useState(null); // สำหรับดู Portfolio ของคนอื่นผ่านลิงก์
   const [systemStats, setSystemStats] = useState({ totalUsers: 0, allUsers: [] });
   const [isStatsLoading, setIsStatsLoading] = useState(false);
+  const [communityUsers, setCommunityUsers] = useState([]);
+  const [isCommunityLoading, setIsCommunityLoading] = useState(false);
   
   const [profile, setProfile] = useState(INITIAL_PROFILE);
   const [portfolioData, setPortfolioData] = useState({
@@ -514,6 +517,34 @@ export default function App() {
     }
   }, [activeTab]);
 
+  // Fetch community users
+  useEffect(() => {
+    if (activeTab === 'community' && user) {
+      const fetchCommunity = async () => {
+        setIsCommunityLoading(true);
+        try {
+          const usersCol = collection(db, 'users');
+          const snapshot = await getDocs(usersCol);
+          const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          
+          // กรองเอาเฉพาะคนที่เปิด isCommunityVisible
+          const filtered = all.filter(u => 
+            (u.isCommunityVisible === true || u.profile?.isCommunityVisible === true) && 
+            (u.name || u.profile?.name)
+          );
+          
+          setCommunityUsers(filtered);
+          console.log(`Found ${filtered.length} community users`);
+        } catch (error) {
+          console.error("Error fetching community:", error);
+        } finally {
+          setIsCommunityLoading(false);
+        }
+      };
+      fetchCommunity();
+    }
+  }, [activeTab, user]);
+
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
     // บังคับให้เลือก Account ใหม่เสมอเพื่อป้องกันการค้าง
@@ -565,6 +596,9 @@ export default function App() {
       setPortfolioData({
         certificates: [], orders: [], trainings: [], speaker: [], teacherWorks: [], studentWorks: []
       });
+      setActiveTab('profile');
+      setPublicUserUid(null);
+      setViewMode('admin');
     } catch (error) {
       console.error("Logout Error:", error);
     }
@@ -1440,7 +1474,13 @@ export default function App() {
                 <span className="font-bold text-slate-800 text-lg hidden sm:block tracking-wide">E-Portfolio Preview</span>
               </div>
               <div className="flex items-center gap-2 md:gap-3">
-                <button onClick={() => setViewMode('admin')} className="text-sm bg-slate-800 hover:bg-slate-900 text-white px-3 md:px-4 py-2 rounded-lg transition flex items-center shadow-sm font-medium">
+                <button 
+                  onClick={() => {
+                    setViewMode('admin');
+                    setPublicUserUid(null);
+                  }} 
+                  className="text-sm bg-slate-800 hover:bg-slate-900 text-white px-3 md:px-4 py-2 rounded-lg transition flex items-center shadow-sm font-medium"
+                >
                   <Edit2 size={16} className="md:mr-2" /> <span className="hidden md:inline">กลับหน้าระบบหลัก</span>
                 </button>
               </div>
@@ -1692,6 +1732,7 @@ export default function App() {
           <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
             <div className="text-[11px] font-semibold text-blue-300 uppercase tracking-wider mb-1.5 mt-2 pl-3">ระบบจัดการ</div>
             <NavItem id="dashboard" icon={Home} label="แดชบอร์ดภาพรวม" />
+            {user && <NavItem id="community" icon={Users} label="ทำเนียบสมาชิก" />}
             {user?.isMasterAdmin && (
               <button
                 onClick={() => setActiveTab('system-stats')}
@@ -1745,7 +1786,9 @@ export default function App() {
               </button>
               <h2 className="text-xl font-semibold text-slate-800">
                 {activeTab === 'dashboard' ? 'แดชบอร์ดภาพรวม' : 
+                 activeTab === 'community' ? 'ทำเนียบสมาชิก' :
                  activeTab === 'profile' ? 'จัดการโปรไฟล์' :
+                 activeTab === 'system-stats' ? 'สถิติระบบ' :
                  activeTab === 'settings' ? (!isAdminAuthenticated ? 'เข้าสู่ระบบผู้ดูแล' : 'ตั้งค่าระบบ') : 
                  activeTab === 'theme' ? 'สีสันของระบบ' :
                  SCHEMA[activeTab]?.name}
@@ -1908,7 +1951,7 @@ export default function App() {
               </div>
             )}
 
-            {['profile', 'settings', 'theme', 'system-stats'].includes(activeTab) && (
+            {['profile', 'settings', 'theme', 'system-stats', 'community'].includes(activeTab) && (
               !isAdminAuthenticated ? (
                 <div className="flex items-center justify-center p-4 pt-10">
                   <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-sm">
@@ -2024,6 +2067,116 @@ export default function App() {
                           <p>ข้อมูลที่แสดงด้านบนเป็นเพียงข้อมูลพื้นฐานเพื่อการตรวจสอบจำนวนผู้ใช้งานในระบบเท่านั้น ผู้ดูแลระบบควรระมัดระวังการเผยแพร่ข้อมูลเหล่านี้สู่สาธารณะตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล (PDPA)</p>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'community' && (
+                    <div className="space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shadow-inner">
+                            <Users size={28} />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-800">ทำเนียบแฟ้มผลงานสมาชิก</h3>
+                            <p className="text-sm text-slate-500">พบสมาชิกที่เปิดเผยข้อมูล {communityUsers.length} ท่าน</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              setIsCommunityLoading(true);
+                              const fetchCommunity = async () => {
+                                try {
+                                  const usersCol = collection(db, 'users');
+                                  const snapshot = await getDocs(usersCol);
+                                  const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                                  const filtered = all.filter(u => 
+                                    (u.isCommunityVisible === true || u.profile?.isCommunityVisible === true) && 
+                                    (u.name || u.profile?.name)
+                                  );
+                                  setCommunityUsers(filtered);
+                                } catch (error) {
+                                  console.error("Manual refresh error:", error);
+                                } finally {
+                                  setIsCommunityLoading(false);
+                                }
+                              };
+                              fetchCommunity();
+                            }}
+                            disabled={isCommunityLoading}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all font-bold text-sm disabled:opacity-50"
+                          >
+                            <History size={18} className={isCommunityLoading ? 'animate-spin' : ''} /> 
+                            {isCommunityLoading ? 'กำลังโหลด...' : 'รีเฟรชข้อมูล'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {isCommunityLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                          <Loader2 className="animate-spin text-blue-600 mb-3" size={40} />
+                          <p className="text-slate-500 font-medium">กำลังค้นหาสมาชิก...</p>
+                        </div>
+                      ) : communityUsers.length === 0 ? (
+                        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
+                          <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                            <Users size={40} />
+                          </div>
+                          <h4 className="text-lg font-bold text-slate-800 mb-2">ยังไม่มีสมาชิกที่เปิดเผยแฟ้มผลงาน</h4>
+                          <p className="text-slate-500 max-w-md mx-auto">คุณสามารถเป็นคนแรกได้! โดยไปที่เมนู "โปรไฟล์" และเปิดสวิตช์ "การแสดงผลในชุมชนสมาชิก"</p>
+                          <button 
+                            onClick={() => setActiveTab('profile')}
+                            className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl transition font-medium shadow-md shadow-blue-100"
+                          >
+                            ไปที่ตั้งค่าโปรไฟล์
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                          {communityUsers.map((u) => {
+                            const uProfile = u.profile || u;
+                            return (
+                              <div 
+                                key={u.id} 
+                                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col h-full"
+                              >
+                                <div className="h-24 bg-slate-50 border-b border-slate-100 relative overflow-hidden">
+                                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#2563eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                                  <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
+                                    <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-md overflow-hidden bg-white">
+                                      <img 
+                                        src={getDirectImageUrl(uProfile.photoUrl) || DEFAULT_AVATAR} 
+                                        alt={uProfile.name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_AVATAR; }}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="pt-12 p-5 text-center flex-1 flex flex-col">
+                                  <h4 className="font-bold text-slate-800 text-lg line-clamp-1 mb-1">{uProfile.name || u.name || 'ไม่ระบุชื่อ'}</h4>
+                                  <p className="text-blue-600 text-sm font-medium mb-2 line-clamp-1">{uProfile.position || '-'}</p>
+                                  <p className="text-slate-500 text-xs flex items-center justify-center gap-1 mb-4">
+                                    <Home size={12} /> {uProfile.school || '-'}
+                                  </p>
+                                  <div className="mt-auto pt-4 border-t border-slate-50">
+                                    <button 
+                                      onClick={() => {
+                                        setPublicUserUid(u.id);
+                                        setViewMode('public');
+                                      }}
+                                      className="w-full bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 py-2.5 rounded-xl transition-all duration-200 font-bold text-sm flex items-center justify-center gap-2"
+                                    >
+                                      <Eye size={16} /> ดูแฟ้มผลงาน
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -2207,6 +2360,32 @@ export default function App() {
                           <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-slate-700 mb-1">ประวัติย่อ / คติพจน์</label>
                             <textarea name="bio" value={profile.bio} onChange={handleProfileChange} rows="3" className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"></textarea>
+                          </div>
+
+                          <div className="md:col-span-2 mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="text-sm font-bold text-blue-800 flex items-center">
+                                  <Users size={16} className="mr-2" /> การแสดงผลในชุมชนสมาชิก
+                                </h4>
+                                <p className="text-[11px] text-blue-600 mt-0.5">เปิดเพื่อให้สมาชิกคนอื่นๆ ในระบบสามารถเห็นแฟ้มผลงานของคุณได้</p>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  className="sr-only peer" 
+                                  checked={profile.isCommunityVisible || false} 
+                                  onChange={(e) => {
+                                    const val = e.target.checked;
+                                    const newProfile = { ...profile, isCommunityVisible: val };
+                                    setProfile(newProfile);
+                                    saveProfileToFirebase(newProfile, settings);
+                                  }} 
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                <span className="ml-3 text-sm font-bold text-blue-700">{profile.isCommunityVisible ? 'เปิดใช้งาน' : 'ปิดอยู่'}</span>
+                              </label>
+                            </div>
                           </div>
                         </div>
                       </div>

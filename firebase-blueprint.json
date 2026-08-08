@@ -12,6 +12,7 @@
         "email": { "type": "string" },
         "bio": { "type": "string" },
         "googleDriveLink": { "type": "string" },
+        "isCommunityVisible": { "type": "boolean" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name"]
