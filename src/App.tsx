@@ -391,7 +391,27 @@ export default function App() {
   const [showImageTools, setShowImageTools] = useState(false);
   const [printModalState, setPrintModalState] = useState(null);
   const [yearFilter, setYearFilter] = useState('all'); 
+  const [publicActiveTab, setPublicActiveTab] = useState(Object.keys(SCHEMA)[0]); // เพิ่มสถานะสำหรับ Tab หน้า Preview
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { categoryKey, id, title }
+
+  // เมื่อเข้าหน้า Public View ให้เลือก Tab แรกที่มีข้อมูล
+  useEffect(() => {
+    if (viewMode === 'public') {
+      const activeCategories = Object.values(SCHEMA).filter(c => {
+        const settingKey = `show${c.id.charAt(0).toUpperCase() + c.id.slice(1)}`;
+        const isVisible = settings[settingKey] !== false;
+        const hasData = (portfolioData[c.id] || []).length > 0;
+        return isVisible && hasData;
+      });
+      
+      if (activeCategories.length > 0) {
+        const currentTabIsValid = activeCategories.some(c => c.id === publicActiveTab);
+        if (!currentTabIsValid) {
+          setPublicActiveTab(activeCategories[0].id);
+        }
+      }
+    }
+  }, [viewMode, portfolioData, settings, publicActiveTab]);
 
   useEffect(() => {
     // ตรวจสอบพารามิเตอร์ u ใน URL เพื่อแสดงผลหน้าสาธารณะของผู้อื่น
@@ -654,7 +674,7 @@ export default function App() {
       unsubProfile();
       unsubs.forEach(unsub => unsub());
     };
-  }, [user]);
+  }, [user, viewMode, publicUserUid]);
 
   useEffect(() => {
     if (!document.getElementById('kanit-font-style')) {
@@ -1526,6 +1546,39 @@ export default function App() {
               </div>
             </div>
 
+            {/* Tab Navigation for Public View */}
+            <div className="mb-8 flex overflow-x-auto pb-4 scrollbar-hide gap-2 sticky top-16 bg-slate-50/80 backdrop-blur-md z-40 py-2 print:hidden">
+              {Object.values(SCHEMA).map(category => {
+                const settingKey = `show${category.id.charAt(0).toUpperCase() + category.id.slice(1)}`;
+                const isVisible = settings[settingKey] !== false;
+                const categoryData = portfolioData[category.id] || [];
+                const hasData = categoryData.length > 0;
+                
+                if (!isVisible || !hasData) return null;
+                
+                const Icon = category.icon;
+                const isActive = publicActiveTab === category.id;
+                
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => setPublicActiveTab(category.id)}
+                    className={`flex items-center gap-2 px-5 py-3 rounded-2xl whitespace-nowrap transition-all duration-500 font-bold text-sm ${
+                      isActive 
+                        ? 'bg-blue-600 text-white shadow-xl shadow-blue-200 scale-105' 
+                        : 'bg-white text-slate-600 border border-slate-100 hover:border-blue-300 hover:text-blue-600 shadow-sm'
+                    }`}
+                  >
+                    <Icon size={18} />
+                    {category.name}
+                    <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                      {categoryData.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="grid grid-cols-1 gap-8 print:gap-6">
             {Object.values(SCHEMA).map(category => {
               const settingKey = `show${category.id.charAt(0).toUpperCase() + category.id.slice(1)}`;
@@ -1537,9 +1590,15 @@ export default function App() {
               if (!isVisible || allData.length === 0) return null;
 
               const Icon = category.icon;
+              const isActiveTab = publicActiveTab === category.id;
 
               return (
-                <div key={category.id} className="page-break-inside-avoid shadow-sm rounded-2xl overflow-hidden bg-white border border-slate-100 p-6 md:p-8">
+                <motion.div 
+                  key={category.id} 
+                  initial={isActiveTab ? { opacity: 0, x: 20 } : false}
+                  animate={isActiveTab ? { opacity: 1, x: 0 } : false}
+                  className={`page-break-inside-avoid shadow-sm rounded-3xl overflow-hidden bg-white border border-slate-100 p-6 md:p-10 ${isActiveTab ? 'block' : 'hidden print:block'}`}
+                >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
                     <h2 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center">
                       <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mr-3 border border-blue-100">
@@ -1571,11 +1630,17 @@ export default function App() {
                   </div>
 
                   {data.length > 0 ? (
-                    <div className="grid gap-4">
-                      {data.map((item) => (
-                        <div key={item.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative hover:shadow-md transition duration-200">
-                           <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-xl"></div>
-                           <div className="ml-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {data.map((item, idx) => (
+                        <motion.div 
+                          key={item.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative hover:shadow-md transition-all duration-300 group hover:border-blue-200"
+                        >
+                           <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                           <div className="ml-2">
                             {category.fields.map((field, fIdx) => {
                               if (!item[field.key]) return null;
                               if (field.type === 'url') return null; 
@@ -1609,7 +1674,7 @@ export default function App() {
                               return null;
                             })}
                            </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   ) : (
@@ -1617,7 +1682,7 @@ export default function App() {
                       ไม่พบข้อมูลในปี {yearFilter}
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
             </div>
