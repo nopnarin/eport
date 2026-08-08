@@ -382,6 +382,7 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState('');
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPrintingCategory, setIsPrintingCategory] = useState(false);
+  const [pendingPDF, setPendingPDF] = useState<{ orientation: 'portrait' | 'landscape' } | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showImageTools, setShowImageTools] = useState(false);
   const [printModalState, setPrintModalState] = useState(null);
@@ -1245,16 +1246,14 @@ export default function App() {
         // Wait to render
         await new Promise(r => setTimeout(r, 700)); 
 
-        const imgData = await toJpeg(renderContainer, { 
-          quality: 0.9, 
+        const { toPng } = await import('html-to-image');
+        const imgData = await toPng(renderContainer, { 
           backgroundColor: '#ffffff',
-          pixelRatio: 1.5,
-          width: renderContainer.offsetWidth,
-          height: renderContainer.offsetHeight,
+          pixelRatio: 1.8,
           cacheBust: true
         });
 
-        if (!imgData || imgData.length < 100) {
+        if (!imgData || imgData.length < 500) {
           console.warn(`Page ${p+1} render produced empty image`);
         } else {
           if (p > 0) pdf.addPage();
