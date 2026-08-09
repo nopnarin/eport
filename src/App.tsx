@@ -877,6 +877,7 @@ export default function App() {
       
       const payload = { ...formData };
       delete payload.addToCertificates;
+      delete payload.certDate;
       payload.updatedAt = new Date().toISOString();
       if (!editingId) payload.createdAt = new Date().toISOString();
 
@@ -893,8 +894,8 @@ export default function App() {
         const title = formData.courseName || formData.workName || formData.topic || formData.orderNo || formData.title || `เกียรติบัตรจาก ${SCHEMA[currentCategory].name}`;
         const org = formData.organization || formData.location || '-';
         
-        let dateValue = new Date().toISOString().split('T')[0];
-        if (formData.date && !formData.dateStr) dateValue = formData.date;
+        let dateValue = formData.certDate || new Date().toISOString().split('T')[0];
+        if (!formData.certDate && formData.date && !formData.dateStr) dateValue = formData.date;
         
         let desc = formData.details || formData.description || `เพิ่มอัตโนมัติจากแฟ้ม ${SCHEMA[currentCategory].name}`;
         if (currentCategory === 'studentWorks') desc = `รางวัล: ${formData.award || '-'} ปีการศึกษา: ${formData.year || '-'}`;
@@ -2790,24 +2791,48 @@ export default function App() {
                   ))}
 
                   {currentCategory !== 'certificates' && (
-                    <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-start">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <input
-                          id="addToCertificates"
-                          type="checkbox"
-                          checked={formData.addToCertificates || false}
-                          onChange={(e) => setFormData({ ...formData, addToCertificates: e.target.checked })}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer"
-                        />
+                    <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <input
+                            id="addToCertificates"
+                            type="checkbox"
+                            checked={formData.addToCertificates || false}
+                            onChange={(e) => setFormData({ ...formData, addToCertificates: e.target.checked })}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer"
+                          />
+                        </div>
+                        <div className="ml-3">
+                          <label htmlFor="addToCertificates" className="text-sm font-medium text-slate-700 cursor-pointer">
+                            มีการได้รับเกียรติบัตรในรายการนี้ด้วย (เพิ่มลงแฟ้มเกียรติบัตรอัตโนมัติ)
+                          </label>
+                          <p className="text-xs text-slate-500 mt-1">
+                            ระบบจะนำข้อมูลที่คุณกรอกทั้งหมด (รวมลิงก์ไฟล์) ไปสร้างข้อมูลใหม่ในหมวดหมู่ "เกียรติบัตร" ให้อีกหนึ่งรายการ เพื่อลดการกรอกข้อมูลซ้ำซ้อน
+                          </p>
+                        </div>
                       </div>
-                      <div className="ml-3">
-                        <label htmlFor="addToCertificates" className="text-sm font-medium text-slate-700 cursor-pointer">
-                          มีการได้รับเกียรติบัตรในรายการนี้ด้วย (เพิ่มลงแฟ้มเกียรติบัตรอัตโนมัติ)
-                        </label>
-                        <p className="text-xs text-slate-500 mt-1">
-                          ระบบจะนำข้อมูลที่คุณกรอกทั้งหมด (รวมลิงก์ไฟล์) ไปสร้างข้อมูลใหม่ในหมวดหมู่ "เกียรติบัตร" ให้อีกหนึ่งรายการ เพื่อลดการกรอกข้อมูลซ้ำซ้อน
-                        </p>
-                      </div>
+
+                      {formData.addToCertificates && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="mt-4 pt-4 border-t border-blue-200"
+                        >
+                          <label className="block text-sm font-semibold text-blue-800 mb-2">
+                            วันที่ได้รับเกียรติบัตร <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            required={formData.addToCertificates}
+                            value={formData.certDate || ''}
+                            onChange={(e) => setFormData({ ...formData, certDate: e.target.value })}
+                            className="w-full p-2.5 bg-white border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <p className="text-[11px] text-blue-600 mt-1.5 flex items-center">
+                            <AlertCircle size={12} className="mr-1" /> วันที่นี้จะถูกนำไปแสดงในหน้าเกียรติบัตร
+                          </p>
+                        </motion.div>
+                      )}
                     </div>
                   )}
                 </form>
