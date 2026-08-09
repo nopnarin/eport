@@ -4,7 +4,7 @@ import {
   Home, Award, FileText, BookOpen, Mic, Briefcase, Users, 
   Settings, LogOut, Plus, Edit2, Trash2, Link as LinkIcon, 
   Printer, User, UserCheck, Menu, X, Save, Eye, Palette, Lock, Upload, Loader2, ChevronDown, ChevronUp, FileSpreadsheet, AlertCircle, Filter, Monitor,
-  BarChart3, CheckCircle2, Database, History, ShieldAlert
+  BarChart3, CheckCircle2, Database, History, ShieldAlert, Grid
 } from 'lucide-react';
 import { motion } from "motion/react";
 import * as XLSX from 'xlsx';
@@ -71,6 +71,17 @@ const SCHEMA = {
       { key: 'dateStr', label: 'ระยะเวลา (เช่น 1-2 ส.ค. 66)', type: 'text', required: true },
       { key: 'hours', label: 'จำนวนชั่วโมง', type: 'number', required: true },
       { key: 'fileUrl', label: 'ลิงก์วุฒิบัตร', type: 'url' },
+    ]
+  },
+  committee: {
+    id: 'committee', name: 'กรรมการ', icon: UserCheck,
+    fields: [
+      { key: 'title', label: 'รายการกิจกรรม/โครงการ', type: 'text', required: true },
+      { key: 'organization', label: 'หน่วยงานผู้จัด', type: 'text', required: true },
+      { key: 'location', label: 'สถานที่จัดกิจกรรม', type: 'text' },
+      { key: 'dateStr', label: 'วันที่ปฏิบัติหน้าที่', type: 'text', required: true },
+      { key: 'orderUrl', label: 'ลิงก์คำสั่งปฏิบัติงาน', type: 'url' },
+      { key: 'certUrl', label: 'ลิงก์เกียรติบัตร (ถ้ามี)', type: 'url' },
     ]
   },
   speaker: {
@@ -372,10 +383,10 @@ export default function App() {
   
   const [profile, setProfile] = useState(INITIAL_PROFILE);
   const [portfolioData, setPortfolioData] = useState({
-    certificates: [], orders: [], trainings: [], speaker: [], teacherWorks: [], studentWorks: []
+    certificates: [], orders: [], trainings: [], committee: [], speaker: [], teacherWorks: [], studentWorks: []
   });
   const [settings, setSettings] = useState({
-    showCertificates: true, showOrders: true, showTrainings: true, 
+    showCertificates: true, showOrders: true, showTrainings: true, showCommittee: true,
     showSpeaker: true, showTeacherWorks: true, showStudentWorks: true,
     themeColor: 'blue'
   });
@@ -392,7 +403,7 @@ export default function App() {
   const [showImageTools, setShowImageTools] = useState(false);
   const [printModalState, setPrintModalState] = useState(null);
   const [yearFilter, setYearFilter] = useState('all'); 
-  const [publicActiveTab, setPublicActiveTab] = useState(Object.keys(SCHEMA)[0]); // เพิ่มสถานะสำหรับ Tab หน้า Preview
+  const [publicActiveTab, setPublicActiveTab] = useState('all'); // เพิ่มสถานะสำหรับ Tab หน้า Preview
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { categoryKey, id, title }
 
   // เมื่อเข้าหน้า Public View ให้เลือก Tab แรกที่มีข้อมูล
@@ -406,9 +417,9 @@ export default function App() {
       });
       
       if (activeCategories.length > 0) {
-        const currentTabIsValid = activeCategories.some(c => c.id === publicActiveTab);
+        const currentTabIsValid = publicActiveTab === 'all' || activeCategories.some(c => c.id === publicActiveTab);
         if (!currentTabIsValid) {
-          setPublicActiveTab(activeCategories[0].id);
+          setPublicActiveTab('all');
         }
       }
     }
@@ -1510,19 +1521,23 @@ export default function App() {
           </nav>
 
           <div id="portfolio-content" className="max-w-4xl mx-auto p-4 md:p-8 print:p-0 mt-4 md:mt-8 bg-slate-50">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8 print:shadow-none print:border-none print:p-0 print:mb-8">
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+            <div className="bg-white rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-slate-100 p-8 md:p-12 mb-10 print:shadow-none print:border-none print:p-0 print:mb-8 relative overflow-hidden group">
+              {/* Animated Background Orbs */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-100/50 rounded-full -mr-32 -mt-32 blur-3xl transition-transform duration-1000 group-hover:scale-110"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-100/40 rounded-full -ml-24 -mb-24 blur-3xl"></div>
+              
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-10 relative z-10">
                 <div 
-                  className="rounded-full border-4 border-blue-50 shadow-md overflow-hidden shrink-0 transition-all duration-300 relative" 
+                  className="rounded-full border-[6px] border-white shadow-2xl overflow-hidden shrink-0 transition-all duration-700 relative ring-1 ring-slate-100 hover:rotate-3 hover:scale-105" 
                   style={{ 
-                    width: profile.imageSize ? `${profile.imageSize}px` : '160px', 
-                    height: profile.imageSize ? `${profile.imageSize}px` : '160px'
+                    width: profile.imageSize ? `${profile.imageSize}px` : '180px', 
+                    height: profile.imageSize ? `${profile.imageSize}px` : '180px'
                   }}
                 >
                   <img 
                     src={getDirectImageUrl(profile.photoUrl) || DEFAULT_AVATAR} 
                     alt="Profile" 
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300" 
+                    className="absolute inset-0 w-full h-full object-cover" 
                     style={{ 
                       objectPosition: `${profile.imagePanX ?? 50}% ${profile.imagePanY ?? 50}%`,
                       transform: `scale(${profile.imageZoom ?? 1})`
@@ -1531,24 +1546,64 @@ export default function App() {
                   />
                 </div>
                 <div className="text-center md:text-left flex-1 w-full">
-                  <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">{profile.name}</h1>
-                  <p className="text-lg md:text-xl text-blue-600 font-medium mb-2">{profile.position}</p>
-                  <p className="text-sm md:text-base text-slate-500 mb-4 flex items-center justify-center md:justify-start">
-                    <Home size={16} className="mr-2"/> {profile.school}
-                  </p>
-                  <div className="bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-100 text-slate-700 leading-relaxed text-sm md:text-base text-left">
-                    {profile.bio}
+                  <div className="mb-4">
+                    <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">{profile.name}</h1>
+                    <div className="inline-block px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-bold text-sm shadow-lg shadow-blue-200">
+                      {profile.position}
+                    </div>
                   </div>
-                  <div className="mt-5 flex flex-wrap gap-3 justify-center md:justify-start text-sm text-slate-600">
-                    {profile.email && <span className="flex items-center bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><span className="font-medium mr-2">Email:</span> {profile.email}</span>}
-                    {profile.phone && <span className="flex items-center bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><span className="font-medium mr-2">โทร:</span> {profile.phone}</span>}
+                  
+                  <p className="text-base md:text-lg text-slate-500 mb-6 flex items-center justify-center md:justify-start font-medium">
+                    <Home size={20} className="mr-2 text-blue-400"/> {profile.school}
+                  </p>
+                  
+                  <div className="bg-slate-50/50 backdrop-blur-sm p-6 md:p-8 rounded-3xl border border-white shadow-inner text-slate-700 leading-relaxed text-base md:text-lg text-left italic">
+                    <span className="text-3xl text-blue-200 font-serif absolute -mt-4 -ml-4">"</span>
+                    {profile.bio || 'ยังไม่มีข้อมูลแนะนำตัว...'}
+                    <span className="text-3xl text-blue-200 font-serif absolute mt-2 ml-1">"</span>
+                  </div>
+                  
+                  <div className="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
+                    {profile.email && (
+                      <div className="flex items-center bg-white px-5 py-2.5 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-blue-200 group/item">
+                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center mr-3 text-blue-500 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
+                          <Plus size={14} className="rotate-45" /> 
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Email Address</p>
+                          <p className="text-sm font-bold text-slate-700">{profile.email}</p>
+                        </div>
+                      </div>
+                    )}
+                    {profile.phone && (
+                      <div className="flex items-center bg-white px-5 py-2.5 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-blue-200 group/item">
+                        <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center mr-3 text-green-500 group-hover/item:bg-green-600 group-hover/item:text-white transition-colors">
+                          <History size={14} /> 
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Phone Number</p>
+                          <p className="text-sm font-bold text-slate-700">{profile.phone}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Tab Navigation for Public View */}
-            <div className="mb-8 flex overflow-x-auto pb-4 scrollbar-hide gap-2 sticky top-16 bg-slate-50/80 backdrop-blur-md z-40 py-2 print:hidden">
+            <div className="mb-10 flex overflow-x-auto pb-4 scrollbar-hide gap-3 sticky top-16 bg-slate-50/90 backdrop-blur-xl z-40 py-3 print:hidden px-2">
+              <button
+                onClick={() => setPublicActiveTab('all')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-full whitespace-nowrap transition-all duration-500 font-extrabold text-sm ${
+                  publicActiveTab === 'all' 
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-200 scale-105' 
+                    : 'bg-white text-slate-600 border border-slate-100 hover:border-blue-300 hover:text-blue-600 shadow-sm'
+                }`}
+              >
+                <Grid size={18} />
+                ทั้งหมด
+              </button>
               {Object.values(SCHEMA).map(category => {
                 const settingKey = `show${category.id.charAt(0).toUpperCase() + category.id.slice(1)}`;
                 const isVisible = settings[settingKey] !== false;
@@ -1591,15 +1646,15 @@ export default function App() {
               if (!isVisible || allData.length === 0) return null;
 
               const Icon = category.icon;
-              const isActiveTab = publicActiveTab === category.id;
+                const isActiveTab = publicActiveTab === 'all' || publicActiveTab === category.id;
 
-              return (
-                <motion.div 
-                  key={category.id} 
-                  initial={isActiveTab ? { opacity: 0, x: 20 } : false}
-                  animate={isActiveTab ? { opacity: 1, x: 0 } : false}
-                  className={`page-break-inside-avoid shadow-sm rounded-3xl overflow-hidden bg-white border border-slate-100 p-6 md:p-10 ${isActiveTab ? 'block' : 'hidden print:block'}`}
-                >
+                return (
+                  <motion.div 
+                    key={category.id} 
+                    initial={isActiveTab ? { opacity: 0, y: 30 } : false}
+                    animate={isActiveTab ? { opacity: 1, y: 0 } : false}
+                    className={`page-break-inside-avoid shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2.5rem] overflow-hidden bg-white border border-slate-100 p-8 md:p-12 mb-8 ${isActiveTab ? 'block' : 'hidden print:block'}`}
+                  >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
                     <h2 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center">
                       <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mr-3 border border-blue-100">
@@ -1665,9 +1720,9 @@ export default function App() {
                             {category.fields.filter(f => f.type === 'url').map(field => {
                               if (item[field.key]) {
                                 return (
-                                  <div key={field.key} className="mt-4 pt-3 border-t border-slate-100">
+                                  <div key={field.key} className="mt-4 pt-3 border-t border-slate-100 last:border-b-0">
                                     <a href={item[field.key]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-medium transition">
-                                      <LinkIcon size={14} className="mr-1.5" /> เปิดดูเอกสาร/ไฟล์แนบ
+                                      <Eye size={14} className="mr-1.5" /> {field.label}
                                     </a>
                                   </div>
                                 )
